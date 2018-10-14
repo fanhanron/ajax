@@ -1,0 +1,178 @@
+<html>
+<head>
+	<meta charset="UTF-8" />
+	{load href="../static/layui/css/layui.css" /}
+	<style>
+	.layui-table-cell .layui-form-checkbox[lay-skin="primary"]{
+     top: 50%;
+     transform: translateY(-50%);
+	}
+	</style>
+</head>
+<body>
+<div class="layui-container">
+	<h2>Ajax</h2>
+	<br>
+	
+	<form class="layui-form"   id="addData">
+		<input style="width:200px"  class="layui-input" type="text" name="name" placeholder="name" /> <br>
+		<div class="layui-form-item">
+			<input type="radio" name="sex" value="1" title="男" checked>
+			<input type="radio" name="sex" value="0" title="女">
+		</div>
+
+		<input style="width:200px"   class="layui-input" type="text" name="age" placeholder="age" /> <br>
+		<button id="addBtn" class="layui-btn" type="button">添加</button>
+	</form>
+	<br>
+		
+	<form id="table" class="layui-form"  lay-filter="table">
+		<button class="layui-btn" type="button" id="deleteBtn">删除</button>
+		<button class="layui-btn" type="button" id="updateBtn">渲染</button>
+	
+	<table style="width:800" id="table" class="layui-table"></table>
+	
+	<script type="text/html" id="switchTpl">
+	<input type="checkbox" name="sex" value="{{d.id}}" lay-skin="switch" lay-text="女|男" lay-filter="sexDemo" {{ d.sex == 0 ? 'checked' : '' }}>
+	</script>
+	</form>
+
+</div>
+
+{load href="../static/layui/layui.js" /}
+<script>
+layui.use(['layer', 'form', 'table', 'util'], function(){
+	var layer = layui.layer,
+		$ = layui.jquery,
+		form = layui.form,
+		util = layui.util,
+		table = layui.table;
+		
+	//渲染表格
+	function loadTable() {
+		table.render({
+		elem: '#table',
+		width: 708,
+		url: '{:url("index/index")}', //数据接口
+		page: true, //开启分页
+		limit: 5,
+		limits: [5,10,15],
+		cols: [[ //表头
+			{type: 'checkbox', fixed: 'left', width:50},
+			{field: 'id', title: 'ID', width:50, style: 'text-align:center'},
+			{field: 'name', title: '用户名', edit: 'text', width:150},
+			//{field: 'sex', title: '性别', edit: 'text', width:150},
+			{field:'sex', title:'性别', width: 150, templet: '#switchTpl', unresize: true},
+			{field: 'age', title: '年龄', edit: 'text', width:150},
+			{field: 'create_time', title: '创建时间', templet: function(d){
+				return timedate(d.create_time)
+			}, width:150}
+
+		]]
+		});
+	}
+	loadTable();
+	//添加
+	$("#addBtn").click(function(){
+		$.ajax({
+			type: 'post',
+			url: '{:url("index/index")}',
+			data: $('#addData').serialize(),
+			dataType: 'json',
+			success: function (res) {
+				if(res.status){
+					layer.msg(res.msg);
+					if(res.status == 1){$("#addData").get(0).reset()}
+				}
+				console.log(res);
+			}
+		})
+	})
+	$("#updateBtn").click(function(){
+		//渲染
+		loadTable();
+	})
+	//删除
+	$("#deleteBtn").click(function(){
+		//获取复选框值
+		var checkStatus = table.checkStatus('table')
+		,data = checkStatus.data;
+		var checked_val = {};
+		for(var i in data){
+			checked_val[i] = data[i].id
+		}
+		console.log(checked_val);
+
+		$.ajax({
+			type: 'delete',
+			url: '{:url("index/index")}',
+			data: {checked_val},
+			dataType: 'json',
+			success: function (res){
+				if(res.status){
+					layer.msg(res.msg);
+				}
+				console.log(res);
+				loadTable();  //渲染table
+			}
+		})
+	})
+	//修改
+	//监听单元格编辑
+	table.on('edit(table)', function(obj){
+	var value = obj.value //得到修改后的值
+	,data = obj.data //得到所在行所有键值
+	,field = obj.field; //得到字段
+	
+	//layer.msg('[ID: '+ data.id +'] ' + field + ' 字段更改为：'+ value);
+	var tab_data = {'id':data.id, 'field': field, 'value':value}
+		$.ajax({
+			type: 'put',
+			url: '{:url("index/index")}',
+			dataType: 'json',
+			data: tab_data,
+			success: function(res){
+				if(res.status){
+					layer.msg(res.msg);
+				}
+				console.log(res);
+			}
+		})
+	});
+	//监听性别操作
+	form.on('switch(sexDemo)', function(obj){
+	//layer.tips(this.value + ' ' + this.name + '：'+ obj.elem.checked, obj.othis);
+	//console.log();  
+	if(obj.elem.checked == true){value=0}else{value=1}
+	var id = this.value,
+		field = this.name,
+		value = value;
+		
+	var tab_data = {'id': id, 'field': field, 'value': value}
+	console.log(tab_data);
+	
+	$.ajax({
+		type: 'put',
+		url: '{:url("index/index")}',
+		data: tab_data,
+		dataType: 'json',
+		success: function(res){
+			if(res.status){
+				layer.msg(res.msg);
+			}
+			console.log(res);
+		}
+	})
+	
+	});
+  
+	//转换时间
+	function timedate(t){
+		var t1 = parseInt(t + '000');
+		return util.toDateString(t1, 'yyyy-MM-dd');
+	}
+	 
+});  
+</script>
+</body>
+</html>
